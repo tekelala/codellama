@@ -56,6 +56,26 @@ do
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/params.json"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/params.json"
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/tokenizer.model"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/tokenizer.model"
     wget --continue ${PRESIGNED_URL/'*'/"${MODEL_PATH}/checklist.chk"} -O ${TARGET_FOLDER}"/${MODEL_PATH}/checklist.chk"
-    echo "Checking checksums"
-    (cd ${TARGET_FOLDER}"/${MODEL_PATH}" && md5sum -c checklist.chk)
+done # This 'done' closes the outer 'for m in ${MODEL_SIZE//,/ }' loop
+
+echo "Checking checksums"
+for m in ${MODEL_SIZE//,/ }
+do
+    MODEL_PATH="CodeLlama-$m"
+    CHECKSUM_FILE="${TARGET_FOLDER}/${MODEL_PATH}/checklist.chk"
+    if [ -f "$CHECKSUM_FILE" ]; then
+        while IFS= read -r line; do
+            FILENAME=$(echo $line | awk '{print $2}')
+            EXPECTED_CHECKSUM=$(echo $line | awk '{print $1}')
+            COMPUTED_CHECKSUM=$(cd ${TARGET_FOLDER}/${MODEL_PATH} && md5 -q $FILENAME)
+
+            if [ "$COMPUTED_CHECKSUM" = "$EXPECTED_CHECKSUM" ]; then
+                echo "Checksum for $FILENAME verified successfully."
+            else
+                echo "Checksum verification failed for $FILENAME."
+            fi
+        done < "$CHECKSUM_FILE"
+    else
+        echo "Checksum file not found for $MODEL_PATH."
+    fi
 done
